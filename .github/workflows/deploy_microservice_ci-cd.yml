@@ -1,0 +1,44 @@
+name: Build and Deploy Microservice
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Checkout the repository
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      # Set up AWS credentials
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: <your-region>
+
+      # Log in to Amazon ECR
+      - name: Log in to Amazon ECR
+        run: |
+          aws ecr get-login-password --region <your-region> | docker login --username AWS --password-stdin <account-id>.dkr.ecr.<your-region>.amazonaws.com
+
+      # Build the Docker image
+      - name: Build Docker image
+        run: |
+          docker build -t custom-microservice:latest .
+
+      # Tag and push the Docker image
+      - name: Push to Amazon ECR
+        run: |
+          docker tag custom-microservice:latest <account-id>.dkr.ecr.<your-region>.amazonaws.com/custom-microservice:latest
+          docker push <account-id>.dkr.ecr.<your-region>.amazonaws.com/custom-microservice:latest
+
+      # Deploy to ECS
+      - name: Deploy to ECS
+        run: |
+          aws ecs update-service --cluster <ecs-cluster-name> --service wordpress-service --force-new-deployment
