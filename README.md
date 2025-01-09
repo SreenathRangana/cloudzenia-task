@@ -1,7 +1,5 @@
 # cloudzenia-task
 
-Let me refine and enhance the documentation to ensure it is complete and easy to follow. Here's an updated version with improved clarity and added details:
-
 ---
 
 ## **AWS Infrastructure Deployment Documentation**
