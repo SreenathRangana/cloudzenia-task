@@ -1,0 +1,45 @@
+version: '3.8'
+
+services:
+  wordpress:
+    image: wordpress:latest
+    container_name: wordpress
+    ports:
+      - "8081:80" # Maps WordPress container's port 80 to host's port 8081
+    environment:
+      WORDPRESS_DB_HOST: db
+      WORDPRESS_DB_USER: wordpress
+      WORDPRESS_DB_PASSWORD: wordpress
+      WORDPRESS_DB_NAME: wordpress
+    depends_on:
+      - db
+
+  db:
+    image: mysql:5.7
+    container_name: wordpress-db
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: wordpress
+      MYSQL_USER: wordpress
+      MYSQL_PASSWORD: wordpress
+    volumes:
+      - db_data:/var/lib/mysql
+
+  microservice:
+    build:
+      context: ./custom-microservice
+    container_name: custom-microservice
+    ports:
+      - "8080:8080" # Maps microservice container's port 8080 to host's port 8080
+
+volumes:
+  db_data:
+
+
+
+
+
+# Open your browser:
+
+# For WordPress, go to: http://localhost:8081
+# For Custom Microservice, go to: http://localhost:8080
