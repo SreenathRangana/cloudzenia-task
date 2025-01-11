@@ -1,4 +1,51 @@
-name: Build and Deploy Microservice
+# name: Build and Deploy Microservice
+
+# on:
+#   push:
+#     branches:
+#       - main
+
+# jobs:
+#   build-and-deploy:
+#     runs-on: ubuntu-latest
+
+#     steps:
+#       # Checkout the repository
+#       - name: Checkout code
+#         uses: actions/checkout@v3
+
+#       # Set up AWS credentials
+#       - name: Configure AWS credentials
+#         uses: aws-actions/configure-aws-credentials@v2
+#         with:
+#           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+#           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+#           aws-region: <your-region>
+
+#       # Log in to Amazon ECR
+#       - name: Log in to Amazon ECR
+#         run: |
+#           aws ecr get-login-password --region <your-region> | docker login --username AWS --password-stdin <account-id>.dkr.ecr.<your-region>.amazonaws.com
+
+#       # Build the Docker image
+#       - name: Build Docker image
+#         run: |
+#           docker build -t custom-microservice:latest .
+
+#       # Tag and push the Docker image
+#       - name: Push to Amazon ECR
+#         run: |
+#           docker tag custom-microservice:latest <account-id>.dkr.ecr.<your-region>.amazonaws.com/custom-microservice:latest
+#           docker push <account-id>.dkr.ecr.<your-region>.amazonaws.com/custom-microservice:latest
+
+#       # Deploy to ECS
+#       - name: Deploy to ECS
+#         run: |
+#           aws ecs update-service --cluster <ecs-cluster-name> --service wordpress-service --force-new-deployment
+
+
+
+name: Deploy to AWS ECS
 
 on:
   push:
@@ -7,38 +54,39 @@ on:
 
 jobs:
   build-and-deploy:
+    name: Build and Deploy to ECS
     runs-on: ubuntu-latest
 
     steps:
-      # Checkout the repository
-      - name: Checkout code
+      # Step 1: Checkout the code
+      - name: Checkout Code
         uses: actions/checkout@v3
 
-      # Set up AWS credentials
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v2
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: <your-region>
-
-      # Log in to Amazon ECR
+      # Step 2: Log in to Amazon ECR
       - name: Log in to Amazon ECR
-        run: |
-          aws ecr get-login-password --region <your-region> | docker login --username AWS --password-stdin <account-id>.dkr.ecr.<your-region>.amazonaws.com
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v1
 
-      # Build the Docker image
-      - name: Build Docker image
+      # Step 3: Build the Docker image
+      - name: Build Docker Image
         run: |
-          docker build -t custom-microservice:latest .
+          docker build -t ${{ secrets.ECR_REPOSITORY_NAME }}:latest ./microservice
 
-      # Tag and push the Docker image
+      # Step 4: Tag the Docker image
+      - name: Tag Docker Image
+        run: |
+          docker tag ${{ secrets.ECR_REPOSITORY_NAME }}:latest ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/${{ secrets.ECR_REPOSITORY_NAME }}:latest
+
+      # Step 5: Push the Docker image to Amazon ECR
       - name: Push to Amazon ECR
         run: |
-          docker tag custom-microservice:latest <account-id>.dkr.ecr.<your-region>.amazonaws.com/custom-microservice:latest
-          docker push <account-id>.dkr.ecr.<your-region>.amazonaws.com/custom-microservice:latest
+          docker push ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/${{ secrets.ECR_REPOSITORY_NAME }}:latest
 
-      # Deploy to ECS
+      # Step 6: Update ECS service
       - name: Deploy to ECS
-        run: |
-          aws ecs update-service --cluster <ecs-cluster-name> --service wordpress-service --force-new-deployment
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v1
+        with:
+          task-definition: ecs-task-def.json
+          service: ${{ secrets.ECS_SERVICE_NAME }}
+          cluster: ${{ secrets.ECS_CLUSTER_NAME }}
+          region: ${{ secrets.AWS_REGION }}
